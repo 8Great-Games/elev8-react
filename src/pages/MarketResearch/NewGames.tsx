@@ -55,6 +55,7 @@ export default function NewGames() {
 
     const fetchApps = async (pageToFetch = 1, reset = false) => {
         try {
+            //console.log("fetchApps", start, end, pageToFetch, reset)
             setIsLoading(true);
             const res = await api.get(`/apps/date-range?start=${start}&end=${end}&platform=${platform}&page=${pageToFetch}&limit=20`)
             const data = await res.data;
@@ -137,7 +138,7 @@ export default function NewGames() {
     useEffect(() => {
         if (isInitialMount.current) {
             isInitialMount.current = false;
-            //fetchApps(1, true, "initialmo 1");
+            fetchApps(1, true);
         } else {
             setApps([]);
             setPage(1);
