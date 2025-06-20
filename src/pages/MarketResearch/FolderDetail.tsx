@@ -1,40 +1,38 @@
 import { useEffect, useRef, useState } from "react";
+import { useParams, Link } from "react-router";
 import PageMeta from "../../components/common/PageMeta";
 import AppCard from "../../components/MarketResearch/AppCard";
 import DateRangePicker from "../../components/form/date-range-picker";
-import { FaGooglePlay, FaAppStoreIos, FaGlobe } from "react-icons/fa";
+import api from "../../api/axios";
 import { App } from "../../types/app";
-import api from "../../api/axios"
 import { BookmarkFolder } from "../../types/bookmarkFolder";
+import { FaGooglePlay, FaAppStoreIos, FaGlobe } from "react-icons/fa";
 
-function Spinner() {
-    return (
-        <div className="flex justify-center py-6">
-            <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-        </div>
-    );
-}
-
-export default function NewGames() {
-    const [apps, setApps] = useState([]);
-    const [start, setStart] = useState(new Date().toLocaleDateString("en-CA"));
-    const [end, setEnd] = useState(new Date().toLocaleDateString("en-CA"));
-    const [platform, setPlatform] = useState<"all" | "ios" | "android">("all");
+export default function FolderDetail() {
+    const { folderName } = useParams();
+    const [apps, setApps] = useState<App[]>([]);
     const [bookmarkFolders, setBookmarkFolders] = useState<BookmarkFolder[]>([]);
-    const [rangeOption, setRangeOption] = useState<"today" | "yesterday" | "7d" | "30d" | "custom">("today");
-
-
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
-    const observerRef = useRef<HTMLDivElement | null>(null);
-    const [totalPages, setTotalPages] = useState(1);
-    const currentPageRef = useRef(1);
-    const isInitialMount = useRef(true);
+    const [platform, setPlatform] = useState<"all" | "ios" | "android">("all");
+    const [rangeOption, setRangeOption] = useState<"today" | "yesterday" | "7d" | "30d" | "custom">("today");
+    const [start, setStart] = useState(new Date().toLocaleDateString("en-CA"));
+    const [end, setEnd] = useState(new Date().toLocaleDateString("en-CA"));
 
-    function getScreenshots(app: App) {
-        if (app.platform === 'ios') {
-            const screenshotObjects =
+    const observerRef = useRef<HTMLDivElement | null>(null);
+    const totalPagesRef = useRef(1);
+    const currentPageRef = useRef(1);
+
+    const platformOptions = [
+        { value: "all", label: "All", icon: <FaGlobe size={14} /> },
+        { value: "android", label: "Android", icon: <FaGooglePlay size={14} /> },
+        { value: "ios", label: "iOS", icon: <FaAppStoreIos size={14} /> },
+    ];
+
+    const getScreenshots = (app: App) => {
+        if (app.platform === "ios") {
+            const screenshots =
                 app.screenshotsByType?.iphone_6_5 ||
                 app.screenshotsByType?.ipadPro_2018 ||
                 app.screenshotsByType?.iphone_d74 ||
@@ -43,32 +41,40 @@ export default function NewGames() {
                 app.screenshotsByType?.iphone5 ||
                 app.screenshotsByType?.iphone6 ||
                 app.screenshotsByType?.["iphone6+"] ||
-                app.screenshotsByType?.[0] ||
                 [];
-
-            return screenshotObjects.map(obj => obj.url);
-        } else if (app.platform === 'android') {
-            return app.screenshots || [];
+            return screenshots.map((s) => s.url);
         }
-        return [];
-    }
-
+        return app.screenshots || [];
+    };
 
     const fetchApps = async (pageToFetch = 1, reset = false) => {
         try {
             setIsLoading(true);
-            const res = await api.get(`/apps/date-range?start=${start}&end=${end}&platform=${platform}&page=${pageToFetch}&limit=20`)
-            const data = await res.data;
-            data.data.map((app: App) => { app.screenshots = getScreenshots(app) })
-            setApps(prev => reset ? data.data : [...prev, ...data.data]);
-            setTotalPages(data.totalPages); // 👈 totalPages güncelle
-            setHasMore(pageToFetch < data.totalPages); // 👈 doğru hesap
+            const res = await api.get(
+                `/apps/bookmarked?folder=${encodeURIComponent(folderName || "")}&platform=${platform}&start=${start}&end=${end}&page=${pageToFetch}&limit=20`
+            );
+            const data = res.data;
+            data.data.forEach((app: App) => {
+                app.screenshots = getScreenshots(app);
+            });
+            setApps((prev) => (reset ? data.data : [...prev, ...data.data]));
+            totalPagesRef.current = data.totalPages;
+            setHasMore(pageToFetch < data.totalPages);
             currentPageRef.current = pageToFetch;
-            setIsLoading(false);
         } catch (err) {
-            console.error("Failed to fetch apps:", err);
+            console.error("Failed to fetch folder apps", err);
+        } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        setApps([]);
+        setPage(1);
+        setHasMore(true);
+        currentPageRef.current = 1;
+        fetchApps(1, true);
     };
 
     useEffect(() => {
@@ -114,89 +120,64 @@ export default function NewGames() {
         setEnd(newEnd);
     }, [rangeOption]);
 
+    useEffect(() => {
+        fetchApps(1, true);
+    }, [folderName, platform, start, end]);
 
     useEffect(() => {
         const fetchBookmarks = async () => {
             try {
                 const res = await api.get("/users/me/bookmarks");
-                const folders = res.data.data || [];
-                setBookmarkFolders(folders);
+                setBookmarkFolders(res.data.data || []);
             } catch (err) {
-                console.error("Failed to fetch bookmarks", err);
+                console.error("Failed to fetch bookmark folders", err);
             }
         };
-
         fetchBookmarks();
     }, []);
-
-
-    useEffect(() => {
-        if (isInitialMount.current) {
-            isInitialMount.current = false;
-            fetchApps(1, true);
-        } else {
-            setApps([]);
-            setPage(1);
-            setHasMore(true);
-            currentPageRef.current = 1;
-            fetchApps(1, true);
-        }
-    }, [start, end, platform]);
 
     useEffect(() => {
         if (!hasMore || isLoading) return;
 
-        const observer = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting && !isLoading && page < totalPages) {
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && !isLoading) {
                 const nextPage = currentPageRef.current + 1;
                 currentPageRef.current = nextPage;
                 setPage(nextPage);
             }
         });
 
-        if (observerRef.current) {
-            observer.observe(observerRef.current);
-        }
-
+        if (observerRef.current) observer.observe(observerRef.current);
         return () => {
-            if (observerRef.current) {
-                observer.unobserve(observerRef.current);
-            }
+            if (observerRef.current) observer.unobserve(observerRef.current);
         };
     }, [apps, hasMore, isLoading]);
 
     useEffect(() => {
         if (page === 1) return;
-        fetchApps(page, false);
+        fetchApps(page);
     }, [page]);
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        setApps([]);
-        setPage(1);
-        setHasMore(true);
-        currentPageRef.current = 1;
-        fetchApps(1, true);
-    };
-
-    const platformOptions = [
-        { value: "all", label: "All", icon: <FaGlobe size={14} /> },
-        { value: "android", label: "Android", icon: <FaGooglePlay size={14} /> },
-        { value: "ios", label: "iOS", icon: <FaAppStoreIos size={14} /> },
-    ];
 
     return (
         <div>
-            <PageMeta title="Elev8 | New Games" description="New Games" />
-
+            <PageMeta title={`Elev8 | ${folderName}`} description={`Apps in ${folderName}`} />
             <div className="min-h-screen rounded-2xl border border-gray-200 bg-white px-5 py-7 dark:border-gray-800 dark:bg-white/[0.03] xl:px-10 xl:py-12">
                 <div className="mx-auto w-full max-w-[1200px] text-center">
-                    <h3 className="mb-4 font-semibold text-gray-800 text-theme-xl dark:text-white/90 sm:text-2xl">
-                        New Games
-                    </h3>
+                    <div className="mb-6 relative h-10 flex items-center">
+                        <Link
+                            to="/bookmarks"
+                            className="absolute left-0 inline-flex items-center px-3 py-1.5 rounded-md border border-gray-300 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 dark:bg-white/5 dark:border-gray-700 dark:text-white dark:hover:bg-white/10 transition"
+                        >
+                            ← Back to Bookmarks
+                        </Link>
 
-                    <div className="flex flex-col items-center gap-4 mb-6">
-                        {/* Platform Toggle */}
+                        <h3 className="mx-auto font-semibold text-gray-800 text-theme-xl dark:text-white/90 sm:text-2xl">
+                            {folderName}
+                        </h3>
+                    </div>
+
+                    {/* Platform & Date Filters */}
+                    <div className="flex flex-col items-center gap-4 my-6">
                         <div className="inline-flex bg-gray-100 dark:bg-white/10 rounded-md overflow-hidden border border-gray-300 dark:border-gray-700">
                             {platformOptions.map(({ value, label, icon }) => (
                                 <button
@@ -214,7 +195,6 @@ export default function NewGames() {
                             ))}
                         </div>
 
-                        {/* Date Range Options */}
                         <div className="inline-flex bg-gray-100 dark:bg-white/10 rounded-md overflow-hidden border border-gray-300 dark:border-gray-700">
                             {[
                                 { label: "Today", value: "today" },
@@ -236,14 +216,9 @@ export default function NewGames() {
                                 </button>
                             ))}
                         </div>
-                    </div>
 
-
-
-                    {/* Filter Form */}
-                    {rangeOption === "custom" && (
-                        <form onSubmit={handleSubmit} className="mb-6 flex flex-col items-center gap-4">
-                            <div className="w-full flex justify-center">
+                        {rangeOption === "custom" && (
+                            <form onSubmit={handleSubmit} className="flex flex-col items-center gap-4">
                                 <div className="w-full max-w-xs">
                                     <DateRangePicker
                                         start={start}
@@ -252,18 +227,18 @@ export default function NewGames() {
                                         setEnd={setEnd}
                                     />
                                 </div>
-                            </div>
-                        </form>
-                    )}
+                            </form>
+                        )}
+                    </div>
 
-                    {/* App Grid */}
+                    {/* App List */}
                     {apps.length === 0 && !isLoading ? (
                         <div className="text-gray-500 text-sm py-20">
-                            No apps found in this date range and platform.
+                            This folder is empty.
                         </div>
                     ) : (
                         <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-3 gap-6 p-6">
-                            {apps.map((app: App, i) => (
+                            {apps.map((app, i) => (
                                 <AppCard
                                     key={i}
                                     {...app}
@@ -273,10 +248,11 @@ export default function NewGames() {
                         </div>
                     )}
 
-                    {/* Load trigger + spinner */}
                     {hasMore && (
                         <div ref={observerRef}>
-                            {isLoading && <Spinner />}
+                            {isLoading && (
+                                <div className="text-gray-500 text-sm py-6">Loading...</div>
+                            )}
                         </div>
                     )}
                 </div>

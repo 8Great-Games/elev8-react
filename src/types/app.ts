@@ -17,6 +17,7 @@ export type BaseApp = {
     screenshotsByType?: IOScreenshotTypes;
     screenshots?: string[];
     title?: string;
+    icon?: string;
 };
 
 export type IOSApp = BaseApp & {

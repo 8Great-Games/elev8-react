@@ -1,4 +1,3 @@
-// App.tsx
 import { BrowserRouter as Router, Routes, Route } from "react-router";
 import SignIn from "./pages/AuthPages/SignIn";
 import NotFound from "./pages/OtherPage/NotFound";
@@ -6,12 +5,13 @@ import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import NewGames from "./pages/MarketResearch/NewGames";
 import Bookmarks from "./pages/MarketResearch/Bookmarks";
+import FolderDetail from "./pages/MarketResearch/FolderDetail"; // 👈 ekle
 import PrivateRoute from "./components/routing/PrivateRoute";
-import { AuthProvider } from "./context/AuthContext"; // <-- eklendi
+import { AuthProvider } from "./context/AuthContext";
 
 export default function App() {
   return (
-    <AuthProvider> {/* merkezi auth sağlayıcı */}
+    <AuthProvider>
       <Router>
         <ScrollToTop />
         <Routes>
@@ -25,6 +25,7 @@ export default function App() {
           >
             <Route index path="/" element={<NewGames />} />
             <Route path="/bookmarks" element={<Bookmarks />} />
+            <Route path="/bookmarks/:folderName" element={<FolderDetail />} />
           </Route>
 
           {/* Public route */}
