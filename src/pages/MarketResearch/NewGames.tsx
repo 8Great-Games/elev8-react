@@ -8,12 +8,12 @@ import { BookmarkFolder } from "../../types/bookmarkFolder";
 
 export default function NewGames() {
     const [apps, setApps] = useState([]);
-    const [start, setStart] = useState(new Date().toLocaleDateString("en-CA"));
-    const [end, setEnd] = useState(new Date().toLocaleDateString("en-CA"));
+    const [start, setStart] = useState(() => getStartEndFromRange("30d")[0]);
+    const [end, setEnd] = useState(() => getStartEndFromRange("30d")[1]);
     const [platform, setPlatform] = useState<"all" | "ios" | "android">("all");
     const [rangeOption, setRangeOption] = useState<
         "today" | "yesterday" | "7d" | "30d" | "custom"
-    >("today");
+    >("30d");
     const [bookmarkFolders, setBookmarkFolders] = useState<BookmarkFolder[]>([]);
 
     const [page, setPage] = useState(1);
@@ -23,6 +23,34 @@ export default function NewGames() {
     const currentPageRef = useRef(1);
     const isInitialMount = useRef(true);
     const [totalPages, setTotalPages] = useState(1);
+
+    function getStartEndFromRange(option: "today" | "yesterday" | "7d" | "30d" | "custom") {
+        const today = new Date();
+        const format = (d: Date) => d.toISOString().split("T")[0];
+
+        switch (option) {
+            case "today":
+                return [format(today), format(today)];
+            case "yesterday": {
+                const yest = new Date(today);
+                yest.setDate(today.getDate() - 1);
+                return [format(yest), format(yest)];
+            }
+            case "7d": {
+                const week = new Date(today);
+                week.setDate(today.getDate() - 6);
+                return [format(week), format(today)];
+            }
+            case "30d": {
+                const month = new Date(today);
+                month.setDate(today.getDate() - 29);
+                return [format(month), format(today)];
+            }
+            default:
+                return [format(today), format(today)];
+        }
+    }
+
 
     // 📅 Aralığa göre tarihleri ayarla
     useEffect(() => {
@@ -36,22 +64,28 @@ export default function NewGames() {
                 newStart = newEnd = format(today);
                 break;
             case "yesterday":
-                { const yest = new Date(today);
-                yest.setDate(today.getDate() - 1);
-                newStart = newEnd = format(yest);
-                break; }
+                {
+                    const yest = new Date(today);
+                    yest.setDate(today.getDate() - 1);
+                    newStart = newEnd = format(yest);
+                    break;
+                }
             case "7d":
-                { const week = new Date(today);
-                week.setDate(today.getDate() - 6);
-                newStart = format(week);
-                newEnd = format(today);
-                break; }
+                {
+                    const week = new Date(today);
+                    week.setDate(today.getDate() - 6);
+                    newStart = format(week);
+                    newEnd = format(today);
+                    break;
+                }
             case "30d":
-                { const month = new Date(today);
-                month.setDate(today.getDate() - 29);
-                newStart = format(month);
-                newEnd = format(today);
-                break; }
+                {
+                    const month = new Date(today);
+                    month.setDate(today.getDate() - 29);
+                    newStart = format(month);
+                    newEnd = format(today);
+                    break;
+                }
             default:
                 return;
         }
