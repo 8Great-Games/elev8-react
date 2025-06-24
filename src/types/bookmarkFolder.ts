@@ -1,6 +1,7 @@
 export type BookmarkFolder = {
     name: string;
     apps: Bookmark[];
+    isDefault?: boolean; // Indicates if this is a default folder
 };
 
 export type Bookmark = {

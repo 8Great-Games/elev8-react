@@ -1,7 +1,7 @@
 // src/api/axios.ts
 import axios from 'axios';
 
-export const host = '';
+export const host = ''; // Replace with your actual host URL
 
 const api = axios.create({
     baseURL: `${host}/api`,

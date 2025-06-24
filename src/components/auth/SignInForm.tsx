@@ -21,6 +21,7 @@ export default function SignInForm() {
     e.preventDefault();
     try {
       const res = await api.post("/auth/login", { email, password, keepMeLoggedIn: isChecked });
+      console.log("Login response:", res.data);
       setUser(res.data);
       navigate("/");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

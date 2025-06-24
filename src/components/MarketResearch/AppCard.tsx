@@ -2,10 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import { FaGooglePlay, FaAppStore } from 'react-icons/fa';
 import { FaRegStar, FaStar, FaPlus } from "react-icons/fa6";
 import { isSameDay, formatDistanceStrict } from "date-fns";
-import { host } from "../../api/axios";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import api from "../../api/axios";
 import { BookmarkFolder } from "../../types/bookmarkFolder";
+import Screenshot from "./Screenshot";
 
 export default function AppCard({
     title = "Game 3d",
@@ -19,17 +18,15 @@ export default function AppCard({
     platform = "android",
     url = "https://play.google.com/store/apps/details?id=your.app.id",
     appId = "",
-    initiallyBookmarkedFolders: initialBookmarkFolders = [] as BookmarkFolder[] // now expects array of folder ids
+    initiallyBookmarkedFolders: initialBookmarkFolders = [] as BookmarkFolder[]
 }) {
     const [bookmarkFolders, setBookmarkFolders] = useState<BookmarkFolder[]>(initialBookmarkFolders);
     const [showFolderSelect, setShowFolderSelect] = useState(false);
     const [folderSearch, setFolderSearch] = useState("");
     const [newFolderName, setNewFolderName] = useState("");
     const folderSelectRef = useRef<HTMLDivElement>(null);
-
-    // Filtered folders for search
-    const filteredFolders = bookmarkFolders.filter(folder =>
-        folder.name.toLowerCase().includes(folderSearch.toLowerCase())
+    const [screenshotLoaded, setScreenshotLoaded] = useState<boolean[]>(
+        new Array(screenshots.length).fill(false)
     );
 
     useEffect(() => {
@@ -48,6 +45,10 @@ export default function AppCard({
         };
     }, [showFolderSelect]);
 
+    useEffect(() => {
+        setScreenshotLoaded(new Array(screenshots.length).fill(false));
+    }, [screenshots]);
+
     const formatSmartDate = (dateStr: string | number | Date) => {
         const inputDate = new Date(dateStr);
         inputDate.setHours(0, 0, 0, 0);
@@ -60,6 +61,10 @@ export default function AppCard({
         return formatDistanceStrict(inputDate, today, { unit: "day", addSuffix: false });
     };
 
+    const filteredFolders = bookmarkFolders.filter(folder =>
+        folder.name.toLowerCase().includes(folderSearch.toLowerCase())
+    );
+
     const handleBookmarkClick = () => {
         setShowFolderSelect(!showFolderSelect);
         setFolderSearch("");
@@ -67,38 +72,29 @@ export default function AppCard({
 
     const handleFolderToggle = async (folderName: string) => {
         const matchingFolder = bookmarkFolders.find(f => f.name === folderName);
-        if (!matchingFolder) {
-            return; // Folder not found, do nothing
-        }
+        if (!matchingFolder) return;
+
         if (matchingFolder.apps.some(app => app.appId === appId && app.platform === platform)) {
-            // Already bookmarked, remove from folder
             await api.delete(`/users/me/bookmarks/${appId}`, {
-                data: { appId, platform, folderName }   // Send appId and platform to backend   
+                data: { appId, platform, folderName }
             });
-            matchingFolder.apps = matchingFolder.apps.filter(app => app.appId !== appId && app.platform !== platform);
+            matchingFolder.apps = matchingFolder.apps.filter(app => app.appId !== appId || app.platform !== platform);
         } else {
-            // Not bookmarked, add to folder
-            await api.post(`/users/me/bookmarks/`,
-                { appId, platform, folderName }   // Send appId and platform to backend   
-            );
-            matchingFolder.apps.push({
-                appId,
-                platform: platform as 'ios' | 'android'
-            });
+            await api.post("/users/me/bookmarks", { appId, platform, folderName });
+            matchingFolder.apps.push({ appId, platform: platform as "ios" | "android" });
         }
+
         setBookmarkFolders([...bookmarkFolders]);
     };
 
     const handleAddFolder = async () => {
         const name = newFolderName.trim();
         if (!name) return;
-        // Simulate backend folder creation
         const newFolder = { apps: [], name };
         await api.post("/users/me/bookmark-folders", { name });
         setBookmarkFolders([...bookmarkFolders, newFolder]);
         setNewFolderName("");
         setFolderSearch("");
-        // Optionally, you can also auto-select the new folder for the app:
         await handleFolderToggle(name);
     };
 
@@ -110,7 +106,7 @@ export default function AppCard({
                     <div className="w-14 h-14 rounded-full border border-dashed flex items-center justify-center text-xs text-gray-400">
                         {icon ? (
                             <img
-                                src={`${host}/proxy-image?url=${icon}`}
+                                src={`${icon}`}
                                 alt="icon"
                                 className="w-full h-full rounded-full object-cover"
                             />
@@ -125,16 +121,14 @@ export default function AppCard({
                 </div>
 
                 <div className="flex gap-2 items-center relative">
-                    {/* Star icon */}
-                    <button
-                        onClick={handleBookmarkClick}
-                        className={`text-yellow-500 hover:scale-105 transition-transform flex items-center}`}
-                    >
+                    {/* Bookmark */}
+                    <button onClick={handleBookmarkClick} className="text-yellow-500 hover:scale-105 transition-transform">
                         {bookmarkFolders.some(folder =>
                             folder.apps.some(app => app.appId === appId && app.platform === platform)
                         ) ? <FaStar /> : <FaRegStar />}
                     </button>
-                    {/* Folder select and search */}
+
+                    {/* Folder select dropdown */}
                     {showFolderSelect && (
                         <div
                             ref={folderSelectRef}
@@ -157,13 +151,15 @@ export default function AppCard({
                                         key={folder.name}
                                         onClick={() => handleFolderToggle(folder.name)}
                                         className={`block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm flex items-center gap-2 ${bookmarkFolders.some(f =>
-                                            f.name === folder.name && f.apps.some(app => app.appId === appId && app.platform === platform)
-                                        ) ? "font-bold text-yellow-600" : ""}
-`}
+                                            f.name === folder.name &&
+                                            f.apps.some(app => app.appId === appId && app.platform === platform)
+                                        ) ? "font-bold text-yellow-600" : ""
+                                            }`}
                                     >
                                         <span className="flex-1">{folder.name}</span>
                                         {bookmarkFolders.some(f =>
-                                            f.name === folder.name && f.apps.some(app => app.appId === appId && app.platform === platform)
+                                            f.name === folder.name &&
+                                            f.apps.some(app => app.appId === appId && app.platform === platform)
                                         ) && (
                                                 <span className="text-yellow-500 text-xs">★</span>
                                             )}
@@ -191,6 +187,7 @@ export default function AppCard({
                             </div>
                         </div>
                     )}
+
                     {/* Market icon */}
                     <a href={url} target="_blank" rel="noopener noreferrer">
                         {platform === "ios" ? <FaAppStore /> : <FaGooglePlay />}
@@ -202,20 +199,20 @@ export default function AppCard({
             <div className="overflow-x-auto mb-4">
                 <div className="flex gap-2 h-80">
                     {screenshots.map((s, i) => (
-                        <div
+                        <Screenshot
                             key={i}
-                            className="h-full flex-shrink-0 overflow-hidden rounded-md border border-dashed text-[10px] text-gray-400 flex justify-center items-center"
-                        >
-                            {s ? (
-                                <img
-                                    src={`${host}/proxy-image?url=${s}`}
-                                    alt={`screenshot-${i}`}
-                                    className="h-full w-auto object-cover"
-                                />
-                            ) : (
-                                "Screenshot"
-                            )}
-                        </div>
+                            url={s}
+                            index={i}
+                            onLoad={(index) =>
+                                setScreenshotLoaded((prev) => {
+                                    if (prev[index]) return prev;
+                                    const updated = [...prev];
+                                    updated[index] = true;
+                                    return updated;
+                                })
+                            }
+                            loaded={screenshotLoaded[i]}
+                        />
                     ))}
                 </div>
             </div>
