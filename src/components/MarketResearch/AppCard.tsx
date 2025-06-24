@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { FaGooglePlay, FaAppStore } from 'react-icons/fa';
 import { FaRegStar, FaStar, FaPlus } from "react-icons/fa6";
 import { isSameDay, formatDistanceStrict } from "date-fns";
-import api from "../../api/axios";
+import api, { host } from "../../api/axios";
 import { BookmarkFolder } from "../../types/bookmarkFolder";
 import Screenshot from "./Screenshot";
 
@@ -106,7 +106,7 @@ export default function AppCard({
                     <div className="w-14 h-14 rounded-full border border-dashed flex items-center justify-center text-xs text-gray-400">
                         {icon ? (
                             <img
-                                src={`${icon}`}
+                                src={`${host}/proxy-image?url=${icon}`}
                                 alt="icon"
                                 className="w-full h-full rounded-full object-cover"
                             />
