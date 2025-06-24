@@ -98,12 +98,6 @@ export default function FilterControls({
                         setStart={setStart}
                         setEnd={setEnd}
                     />
-                    <button
-                        type="submit"
-                        className="px-4 py-2 text-white bg-brand-500 rounded"
-                    >
-                        Apply
-                    </button>
                 </form>
             )}
         </div>
