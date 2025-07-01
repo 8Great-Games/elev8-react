@@ -13,15 +13,28 @@ type Developer = {
     appsLastScrapedAt?: string;
 };
 
+type SyncPlatformStatus = {
+    isSyncing: boolean;
+    lastSyncTime: string | null;
+};
+
 export default function DeveloperTab() {
     const [developers, setDevelopers] = useState<Developer[]>([]);
     const [newURL, setNewURL] = useState("");
     const [isPublisher, setIsPublisher] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [syncing, setSyncing] = useState<{ [developerId: string]: boolean }>({});
+    const [syncStatus, setSyncStatus] = useState<{ ios: SyncPlatformStatus; android: SyncPlatformStatus }>({
+        ios: { isSyncing: false, lastSyncTime: null },
+        android: { isSyncing: false, lastSyncTime: null },
+    });
 
-    const formatDate = (dateStr?: string) => {
+    const [localSyncing, setLocalSyncing] = useState<{ ios: boolean; android: boolean }>({
+        ios: false,
+        android: false,
+    });
+
+    const formatDate = (dateStr?: string | null) => {
         if (!dateStr) return "—";
         const date = new Date(dateStr);
         return new Intl.DateTimeFormat("en-GB", {
@@ -39,14 +52,31 @@ export default function DeveloperTab() {
             setError(null);
             const res = await api.get("/developers");
             setDevelopers(res.data);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             setError(err.response?.data?.error || "Failed to load developers");
         }
     };
 
+    const pollSyncStatus = async () => {
+        try {
+            const res = await api.get("/jobs/sync-status");
+            setSyncStatus(res.data);
+
+            // Eğer backend "isSyncing = false" döndüyse local spinner'ı da sıfırla
+            setLocalSyncing({
+                ios: res.data.ios.isSyncing,
+                android: res.data.android.isSyncing,
+            });
+        } catch (err: any) {
+            console.error("Failed to poll sync status");
+        }
+    };
+
     useEffect(() => {
         fetchDevelopers();
+        pollSyncStatus();
+        const interval = setInterval(pollSyncStatus, 3000);
+        return () => clearInterval(interval);
     }, []);
 
     const handleAdd = async (e: React.FormEvent) => {
@@ -61,7 +91,6 @@ export default function DeveloperTab() {
             setNewURL("");
             setIsPublisher(false);
             fetchDevelopers();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             setError(err.response?.data?.error || "Failed to add developer");
         } finally {
@@ -75,7 +104,6 @@ export default function DeveloperTab() {
             setError(null);
             await api.delete(`/developers/${id}`);
             fetchDevelopers();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             setError(err.response?.data?.error || "Failed to delete developer");
         }
@@ -87,7 +115,6 @@ export default function DeveloperTab() {
             setError(null);
             await api.patch(`/developers/${dev.developerId}/${endpoint}`);
             fetchDevelopers();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             setError(err.response?.data?.error || "Failed to update status");
         }
@@ -100,22 +127,18 @@ export default function DeveloperTab() {
                 isPublisher: !dev.isPublisher,
             });
             fetchDevelopers();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             setError(err.response?.data?.error || "Failed to update publisher status");
         }
     };
 
-    const handleManualSync = async (dev: Developer) => {
+    const triggerPlatformSync = async (platform: "ios" | "android") => {
         try {
-            setSyncing(prev => ({ ...prev, [dev.developerId]: true }));
-            await api.post(`/developers/manual-sync/${dev.developerId}`, { platform: dev.platform });
-            fetchDevelopers();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            setLocalSyncing(prev => ({ ...prev, [platform]: true }));
+            await api.post(`/jobs/sync?platform=${platform}`);
         } catch (err: any) {
-            setError(err.response?.data?.error || "Manual sync failed");
-        } finally {
-            setSyncing(prev => ({ ...prev, [dev.developerId]: false }));
+            setError(err.response?.data?.error || `Failed to start ${platform} sync`);
+            setLocalSyncing(prev => ({ ...prev, [platform]: false }));
         }
     };
 
@@ -156,6 +179,37 @@ export default function DeveloperTab() {
                 </button>
             </form>
 
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 mb-2">
+                <div className="text-sm text-gray-600 dark:text-gray-300 space-x-6">
+                    <span>Last iOS sync: {formatDate(syncStatus.ios.lastSyncTime)}</span>
+                    <span>Last Android sync: {formatDate(syncStatus.android.lastSyncTime)}</span>
+                </div>
+                <div className="flex gap-3">
+                    {["ios", "android"].map((platform) => {
+                        const isBusy = syncStatus[platform as "ios" | "android"].isSyncing || localSyncing[platform as "ios" | "android"];
+                        return (
+                            <button
+                                key={platform}
+                                onClick={() => triggerPlatformSync(platform as "ios" | "android")}
+                                disabled={isBusy}
+                                className={`flex items-center gap-2 px-4 py-2 ${platform === "ios" ? "bg-blue-500" : "bg-green-600"
+                                    } text-white rounded disabled:opacity-60`}
+                            >
+                                {isBusy ? (
+                                    <>
+                                        <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                                        <span>{`Syncing ${platform}...`}</span>
+                                    </>
+                                ) : (
+                                    <span>{`Sync ${platform}`}</span>
+                                )}
+                            </button>
+                        );
+                    })}
+
+                </div>
+            </div>
+
             {error && (
                 <div className="text-red-600 bg-red-50 border border-red-200 p-3 rounded">
                     {error}
@@ -194,7 +248,7 @@ export default function DeveloperTab() {
                             </td>
                             <td className="p-2">{formatDate(dev.appsLastUpdatedAt)}</td>
                             <td className="p-2">{formatDate(dev.appsLastScrapedAt)}</td>
-                            <td className="p-2 space-y-1 space-x-2 flex flex-wrap">
+                            <td className="p-2 space-x-2 flex flex-wrap">
                                 <button
                                     onClick={() => toggleStatus(dev)}
                                     className="text-xs px-3 py-1 bg-blue-500 text-white rounded"
@@ -206,17 +260,6 @@ export default function DeveloperTab() {
                                     className="text-xs px-3 py-1 bg-red-600 text-white rounded"
                                 >
                                     Delete
-                                </button>
-                                <button
-                                    onClick={() => handleManualSync(dev)}
-                                    disabled={syncing[dev.developerId]}
-                                    className="text-xs px-3 py-1 bg-indigo-600 text-white rounded flex items-center gap-1"
-                                >
-                                    {syncing[dev.developerId] ? (
-                                        <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
-                                    ) : (
-                                        "Manual Sync"
-                                    )}
                                 </button>
                             </td>
                         </tr>
