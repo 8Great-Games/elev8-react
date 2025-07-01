@@ -29,9 +29,18 @@ export default function App() {
             <Route path="/bookmarks" element={<Bookmarks />} />
             <Route path="/bookmarks/:folderName" element={<FolderDetail />} />
             <Route path="/publisher-tracking" element={<PublisherTracking />} />
-            <Route path="/admin" element={<Admin />} />
-          </Route>
 
+          </Route>
+          <Route
+            path="/admin"
+            element={
+              <PrivateRoute requiredRole="admin">
+                <AppLayout />
+              </PrivateRoute>
+            }
+          >
+            <Route index element={<Admin />} />
+          </Route>
           {/* Public route */}
           <Route path="/signin" element={<SignIn />} />
 
