@@ -7,6 +7,7 @@ type User = {
     surname: string;
     email: string;
     role: string;
+    picture?: string;
 };
 
 // Context tipi
@@ -27,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         axios
             .get("/api/auth/me", { withCredentials: true })
-            .then((res) => {setUser(res.data.user);})
+            .then((res) => { setUser(res.data.user); })
             .catch(() => setUser(null))
             .finally(() => setLoading(false));
     }, []);
