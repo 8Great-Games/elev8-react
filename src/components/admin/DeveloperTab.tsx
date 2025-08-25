@@ -231,7 +231,21 @@ export default function DeveloperTab() {
                 <tbody>
                     {developers.map((dev) => (
                         <tr key={dev.developerId} className="border-t">
-                            <td className="p-2">{dev.name}</td>
+                            <td className="p-2">
+                                <a
+                                    href={dev.platform === "ios"
+                                        ? `https://apps.apple.com/us/developer/id${dev.developerId}`
+                                        : dev.url
+                                    }
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-500 hover:underline"
+                                >
+                                    {dev.name}
+                                </a>
+                            </td>
+
+
                             <td className="p-2">{dev.platform}</td>
                             <td className="p-2">
                                 <span className={`px-2 py-1 rounded text-xs ${dev.active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
