@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { host } from "../../api/axios";
+import { toolHost } from "../../api/axios";
 
 interface Props {
     url: string;
@@ -30,7 +30,7 @@ const Screenshot: React.FC<Props> = React.memo(({ url, index, onLoad, loaded }) 
             {url ? (
                 <img
                     ref={imgRef}
-                    src={`${host}/proxy-image?url=${url}`}
+                    src={`${toolHost}/proxy-image?url=${url}`}
                     loading="lazy"
                     alt={`screenshot-${index}`}
                     className={`h-full w-auto object-cover transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}

@@ -8,6 +8,7 @@ type User = {
     email: string;
     role: string;
     picture?: string;
+    plan?: object
 };
 
 // Context tipi
@@ -46,5 +47,6 @@ export function useAuth() {
     const context = useContext(AuthContext);
     if (!context) throw new Error("useAuth must be used within an AuthProvider");
     const { user, loading, setUser } = context;
-    return { user, loading, setUser, isAuthenticated: !!user };
+    const hasPlan = user?.plan !== null && user?.plan !== undefined;
+    return { user, loading, setUser, hasPlan, isAuthenticated: !!user };
 }
