@@ -1,8 +1,8 @@
-import { toolHost } from '../../api/axios';
+import { host } from '../../api/axios';
 
 export default function SignInForm() {
   const handleGoogleLogin = () => {
-    window.location.href = `${toolHost}/api/auth/google`;
+    window.location.href = `${host}/api/auth/google`;
   };
 
   return (

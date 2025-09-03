@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 import {
-  ChevronDownIcon
+  ChevronDownIcon,
+  MagnifyingGlass
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
-import { FaGear, FaCheck, FaMagnifyingGlass } from "react-icons/fa6";
-import { useAuth, } from "../context/AuthContext";
+import { FaGear } from "react-icons/fa6";
+import { useAuth } from "../context/AuthContext";
 
 type NavItem = {
   name: string;
@@ -14,13 +15,24 @@ type NavItem = {
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
 
+const navItems: NavItem[] = [
+  {
+    icon: <MagnifyingGlass />,
+    name: "Market Research",
+    subItems: [
+      { name: "New Games", path: "/", pro: false },
+      { name: "Publisher Tracking", path: "/publisher-tracking", pro: false },
+      { name: "Bookmarks", path: "/bookmarks", pro: false },
+    ],
+  }
+];
 
 const othersItems: NavItem[] = [];
 
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
-  const { user, hasPlan } = useAuth();
+  const { user } = useAuth();
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";
     index: number;
@@ -51,32 +63,6 @@ const AppSidebar: React.FC = () => {
 
     if (!submenuMatched) setOpenSubmenu(null);
   }, [location, isActive]);
-
-  const navItems: NavItem[] = useMemo(() => {
-    console.log("hasPlan", hasPlan);
-    if (!hasPlan)
-      return [
-        {
-          icon: <FaCheck />,
-          name: "Activation",
-          path: "/activation",
-        }
-      ]
-    else
-      return [
-        {
-          icon: <FaMagnifyingGlass />,
-          name: "Market Research",
-          subItems: [
-            { name: "New Games", path: "/new-games", pro: false },
-            { name: "Publisher Tracking", path: "/publisher-tracking", pro: false },
-            { name: "Bookmarks", path: "/bookmarks", pro: false },
-          ],
-        }
-      ]
-  }, [hasPlan]);
-
-  console.log("navItems", navItems);
 
   useEffect(() => {
     if (openSubmenu !== null) {
@@ -202,8 +188,7 @@ const AppSidebar: React.FC = () => {
             </div>
           )}
         </li>
-      )
-      )}
+      ))}
     </ul>
   );
 

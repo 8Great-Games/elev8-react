@@ -2,17 +2,8 @@
 layer(base);
 
 @import "tailwindcss";
-@plugin 'tailgrids/plugin';
 
 @custom-variant dark (&:is(.dark *));
-
-.container {
-  @media screen and (width > 1280px) {
-    max-width: 1280px !important;
-  }
-}
-
-
 
 @theme {
   --font-*: initial;
